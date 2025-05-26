@@ -10,21 +10,45 @@ import SwiftUI
 // MARK: - Main Content View
 // This is the root view of the application that contains the main navigation and tab structure
 struct ContentView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @AppStorage("isDarkMode") private var isDarkMode = false
+    
     var body: some View {
         // Main vertical stack containing the app title and tab navigation
         VStack(spacing: 0) {
             // App title header with gradient background
-            Text("ForexAISage")
-                .font(.system(size: 34, weight: .bold))
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [Color.teal.opacity(0.2), Color.blue.opacity(0.2)]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+            HStack {
+                Text("ForexAISage")
+                    .font(.system(size: 34, weight: .bold))
+                
+                Spacer()
+                
+                // Dark mode toggle button
+                Button(action: {
+                    isDarkMode.toggle()
+                }) {
+                    Image(systemName: isDarkMode ? "sun.max.fill" : "moon.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(isDarkMode ? .yellow : .blue)
+                        .padding(8)
+                        .background(
+                            Circle()
+                                .fill(colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1))
+                        )
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        colorScheme == .dark ? Color.teal.opacity(0.3) : Color.teal.opacity(0.2),
+                        colorScheme == .dark ? Color.blue.opacity(0.3) : Color.blue.opacity(0.2)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
                 )
+            )
             
             // Tab navigation containing the three main sections of the app
             TabView {
@@ -53,12 +77,15 @@ struct ContentView: View {
         }
         .navigationTitle("ForexAISage")
         .navigationBarTitleDisplayMode(.large)
+        .background(colorScheme == .dark ? Color.black : Color.white)
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }
 
 // MARK: - Chart Tab View
 // This view handles the display and interaction with forex pair charts
 struct ChartTabView: View {
+    @Environment(\.colorScheme) var colorScheme
     // State management for forex pairs and selection
     @State private var pairs = ForexPair.commonPairs
     @State private var selectedPair = ForexPair.commonPairs[0]
@@ -98,7 +125,7 @@ struct ChartTabView: View {
                             .foregroundColor(.blue)
                     }
                     .padding()
-                    .background(Color.gray.opacity(0.1))
+                    .background(colorScheme == .dark ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
                     .cornerRadius(10)
                 }
                 .padding()
@@ -109,6 +136,7 @@ struct ChartTabView: View {
                 Spacer()
             }
             .navigationBarTitleDisplayMode(.large)
+            .background(colorScheme == .dark ? Color.black : Color.white)
         }
     }
 }
@@ -117,4 +145,5 @@ struct ChartTabView: View {
 // SwiftUI preview provider for development
 #Preview {
     ContentView()
+        .preferredColorScheme(.dark)
 }
