@@ -120,6 +120,16 @@ struct AISageView: View {
                     .padding(.vertical, 8)
                     .background(Color(UIColor.systemBackground))
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(Color(UIColor.secondarySystemBackground))
+                        .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 3)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 15)
+                        .stroke(Color.teal.opacity(0.4), lineWidth: 2)
+                )
+                .padding()
             }
             .navigationBarTitleDisplayMode(.inline)
         }
