@@ -13,6 +13,7 @@ struct ChatMessage: Identifiable {
 // Custom view for displaying individual chat messages
 struct ChatBubble: View {
     let message: ChatMessage
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         HStack {
@@ -26,7 +27,10 @@ struct ChatBubble: View {
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(message.isUser ? Color.blue : Color.teal.opacity(0.4))
+                            .fill(message.isUser ? 
+                                (colorScheme == .dark ? Color.blue.opacity(0.8) : Color.blue) :
+                                (colorScheme == .dark ? Color.teal.opacity(0.3) : Color.teal.opacity(0.4))
+                            )
                     )
                     .foregroundColor(message.isUser ? .white : .primary)
                     .cornerRadius(20)
@@ -34,7 +38,7 @@ struct ChatBubble: View {
                 // Timestamp display
                 Text(message.timestamp, style: .time)
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundColor(colorScheme == .dark ? .gray.opacity(0.8) : .gray)
             }
             
             if !message.isUser { Spacer() }
@@ -46,6 +50,7 @@ struct ChatBubble: View {
 // MARK: - AI Sage View
 // Main view for the AI-powered trading assistant
 struct AISageView: View {
+    @Environment(\.colorScheme) var colorScheme
     // State management for chat
     @State private var messages: [ChatMessage] = [] // Chat history
     @State private var newMessage = "" // Current message input
@@ -66,7 +71,7 @@ struct AISageView: View {
                         .padding()
                         .background(
                             Circle()
-                                .fill(Color.teal.opacity(0.1))
+                                .fill(colorScheme == .dark ? Color.teal.opacity(0.2) : Color.teal.opacity(0.1))
                         )
                         .frame(width: 160, height: 160)
                     
@@ -74,6 +79,12 @@ struct AISageView: View {
                         .font(.title)
                         .bold()
                         .foregroundColor(.teal)
+                    
+                    // Welcome message
+                    Text("Ask me anything about trading!")
+                        .font(.title3)
+                        .foregroundColor(colorScheme == .dark ? .gray.opacity(0.8) : .gray)
+                        .padding(.top, 4)
                 }
                 .padding(.vertical)
                 
@@ -105,7 +116,7 @@ struct AISageView: View {
                     
                     // Message input area
                     HStack {
-                        TextField("Type your message...", text: $newMessage)
+                        TextField("Ask about trading...", text: $newMessage)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .padding(.horizontal)
                         
@@ -118,20 +129,21 @@ struct AISageView: View {
                         .disabled(newMessage.isEmpty)
                     }
                     .padding(.vertical, 8)
-                    .background(Color(UIColor.systemBackground))
+                    .background(colorScheme == .dark ? Color.black : Color.white)
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(UIColor.secondarySystemBackground))
-                        .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 3)
+                        .fill(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color(UIColor.secondarySystemBackground))
+                        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 8, x: 0, y: 3)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 15)
-                        .stroke(Color.teal.opacity(0.4), lineWidth: 2)
+                        .stroke(colorScheme == .dark ? Color.teal.opacity(0.5) : Color.teal.opacity(0.4), lineWidth: 2)
                 )
                 .padding()
             }
             .navigationBarTitleDisplayMode(.inline)
+            .background(colorScheme == .dark ? Color.black : Color.white)
         }
     }
     
@@ -167,4 +179,5 @@ struct AISageView: View {
 // MARK: - Preview
 #Preview {
     AISageView()
+        .preferredColorScheme(.dark)
 } 
