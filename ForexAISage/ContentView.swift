@@ -87,8 +87,14 @@ struct ContentView: View {
 struct ChartTabView: View {
     @Environment(\.colorScheme) var colorScheme
     // State management for forex pairs and selection
-    @State private var pairs = ForexPair.commonPairs
-    @State private var selectedPair = ForexPair.commonPairs[0]
+    @State private var pairs = [
+        ForexPair(symbol: "EUR/USD", name: "Euro / US Dollar", description: "The most traded currency pair in the world"),
+        ForexPair(symbol: "GBP/USD", name: "British Pound / US Dollar", description: "Known as 'Cable' in forex trading"),
+        ForexPair(symbol: "USD/JPY", name: "US Dollar / Japanese Yen", description: "Major Asian currency pair"),
+        ForexPair(symbol: "USD/CHF", name: "US Dollar / Swiss Franc", description: "Known as 'Swissy' in forex trading"),
+        ForexPair(symbol: "AUD/USD", name: "Australian Dollar / US Dollar", description: "Popular commodity currency pair")
+    ]
+    @State private var selectedPair = ForexPair(symbol: "EUR/USD", name: "Euro / US Dollar", description: "The most traded currency pair in the world")
     @State private var searchText = ""
     
     // Computed property that filters pairs based on search input
