@@ -8,6 +8,9 @@ struct WatchlistView: View {
     @State private var searchText = "" // Search query for filtering pairs
     @State private var showingAddPair = false // Controls the add pair sheet presentation
     
+    // Create an instance of the forex data service
+    @StateObject private var forexService = ForexDataService()
+    
     // Computed property that filters pairs based on search text
     var filteredPairs: [ForexPair] {
         if searchText.isEmpty {
@@ -37,13 +40,22 @@ struct WatchlistView: View {
                         
                         Spacer()
                         
-                        // Current price display (placeholder in this implementation)
-                        Text("1.0875") // This would be real-time data in a real app
-                            .font(.title3)
+                        // Current price display with real-time updates
+                        if let currentPrice = forexService.currentPrice {
+                            Text(String(format: "%.4f", currentPrice))
+                                .font(.title3)
+                        } else {
+                            Text("Loading...")
+                                .font(.title3)
+                                .foregroundColor(.gray)
+                        }
                     }
                     .padding(.vertical, 8)
                     .background(Color.teal.opacity(0.1))
                     .cornerRadius(8)
+                    .onAppear {
+                        forexService.fetchCurrentPrice(for: pair.symbol)
+                    }
                 }
                 .onDelete(perform: deletePairs) // Enable swipe-to-delete functionality
             }

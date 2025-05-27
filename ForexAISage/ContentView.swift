@@ -104,38 +104,41 @@ struct ChartTabView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // Dropdown menu for selecting forex pairs
-                Menu {
-                    ForEach(filteredPairs) { pair in
-                        Button(action: {
-                            selectedPair = pair
-                        }) {
-                            Text(pair.name)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Dropdown menu for selecting forex pairs
+                    Menu {
+                        ForEach(filteredPairs) { pair in
+                            Button(action: {
+                                selectedPair = pair
+                            }) {
+                                Text(pair.name)
+                            }
                         }
-                    }
-                } label: {
-                    // Custom styled dropdown button with pair name and chevron
-                    HStack {
-                        Text(selectedPair.name)
-                            .font(.title3)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .foregroundColor(.blue)
+                    } label: {
+                        // Custom styled dropdown button with pair name and chevron
+                        HStack {
+                            Text(selectedPair.name)
+                                .font(.title3)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .foregroundColor(.blue)
+                        }
+                        .padding()
+                        .background(colorScheme == .dark ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                        .cornerRadius(10)
                     }
                     .padding()
-                    .background(colorScheme == .dark ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
-                    .cornerRadius(10)
+                    .zIndex(1) // Ensure menu stays on top
+                    
+                    // Chart view component for displaying the selected pair's data
+                    ChartView(pair: selectedPair.symbol)
+                        .id(selectedPair.symbol) // Force view refresh when pair changes
                 }
-                .padding()
-                
-                // Chart view component for displaying the selected pair's data
-                ChartView(pair: selectedPair.symbol)
-                
-                Spacer()
             }
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("Daily Chart")
+            .navigationBarTitleDisplayMode(.inline)
             .background(colorScheme == .dark ? Color.black : Color.white)
         }
     }

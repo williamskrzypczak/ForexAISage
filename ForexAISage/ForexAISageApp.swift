@@ -16,9 +16,7 @@ struct ForexAISageApp: App {
     var body: some Scene {
         // WindowGroup creates a window for the app's content
         WindowGroup {
-            // ContentView is the root view of the application
-            ContentView()
-                .font(.title3) // Sets the default font size for the app
+            SplashScreenView()
         }
     }
 }
