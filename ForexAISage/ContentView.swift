@@ -93,6 +93,13 @@ struct ContentView: View {
                         Label("AI Sage", systemImage: "brain")
                     }
                     .font(.title3)
+                
+                // Podcast section
+                PodcastEpisodesView()
+                    .tabItem {
+                        Label("Podcast", systemImage: "headphones")
+                    }
+                    .font(.title3)
             }
             .accentColor(.teal)
         }

@@ -6,53 +6,6 @@
 //
 
 import SwiftUI
-import WebKit
-
-// MARK: - YouTube Video Player
-struct YouTubePlayer: UIViewRepresentable {
-    let videoID: String
-    @Binding var isLoading: Bool
-    @Binding var error: String?
-    
-    func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.scrollView.isScrollEnabled = false
-        webView.backgroundColor = .clear
-        webView.navigationDelegate = context.coordinator
-        return webView
-    }
-    
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        guard let url = URL(string: "https://www.youtube.com/embed/\(videoID)?playsinline=1") else {
-            error = "Invalid video URL"
-            return
-        }
-        isLoading = true
-        let request = URLRequest(url: url)
-        webView.load(request)
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, WKNavigationDelegate {
-        var parent: YouTubePlayer
-        
-        init(_ parent: YouTubePlayer) {
-            self.parent = parent
-        }
-        
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            parent.isLoading = false
-        }
-        
-        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            parent.isLoading = false
-            parent.error = error.localizedDescription
-        }
-    }
-}
 
 struct TradingStrategy: Identifiable {
     let id = UUID()
@@ -61,27 +14,21 @@ struct TradingStrategy: Identifiable {
     let timeframe: String
     let riskLevel: String
     let icon: String
-    let videoID: String
-    let videoTitle: String
-    let channelName: String
+    let imageName: String
 }
 
 struct TradingStrategiesView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedStrategy: TradingStrategy?
-    @State private var isLoading = false
-    @State private var error: String?
     
-    let strategies = [
+    private let strategies = [
         TradingStrategy(
             name: "Trend Following",
             description: "A strategy that follows the market trend, buying on uptrends and selling on downtrends.",
             timeframe: "Medium to Long-term",
             riskLevel: "Medium",
             icon: "arrow.up.right",
-            videoID: "dF3JQJjX7YE",
-            videoTitle: "How to Trade Trends - The Complete Guide",
-            channelName: "The Trading Channel"
+            imageName: "trend_following"
         ),
         TradingStrategy(
             name: "Breakout Trading",
@@ -89,9 +36,7 @@ struct TradingStrategiesView: View {
             timeframe: "Short to Medium-term",
             riskLevel: "High",
             icon: "arrow.up.forward",
-            videoID: "YwqXxGQwXxY",
-            videoTitle: "Breakout Trading Strategy - Complete Guide",
-            channelName: "Trading 212"
+            imageName: "breakout_trading"
         ),
         TradingStrategy(
             name: "Range Trading",
@@ -99,9 +44,7 @@ struct TradingStrategiesView: View {
             timeframe: "Short-term",
             riskLevel: "Low to Medium",
             icon: "arrow.left.and.right",
-            videoID: "XxXxXxXxXxX",
-            videoTitle: "Range Trading Strategy - Complete Guide",
-            channelName: "ForexSignals TV"
+            imageName: "range_trading"
         ),
         TradingStrategy(
             name: "Scalping",
@@ -109,9 +52,7 @@ struct TradingStrategiesView: View {
             timeframe: "Very Short-term",
             riskLevel: "High",
             icon: "chart.line.uptrend.xyaxis",
-            videoID: "XxXxXxXxXxX",
-            videoTitle: "Scalping Strategy - Complete Guide",
-            channelName: "ForexSignals TV"
+            imageName: "scalping"
         ),
         TradingStrategy(
             name: "Position Trading",
@@ -119,9 +60,7 @@ struct TradingStrategiesView: View {
             timeframe: "Long-term",
             riskLevel: "Low",
             icon: "chart.bar.fill",
-            videoID: "XxXxXxXxXxX",
-            videoTitle: "Position Trading Strategy - Complete Guide",
-            channelName: "ForexSignals TV"
+            imageName: "position_trading"
         )
     ]
     
@@ -142,7 +81,7 @@ struct TradingStrategiesView: View {
                             
                             Spacer()
                             
-                            Text(strategy.riskLevel)
+                            Text("Risk: \(strategy.riskLevel)")
                                 .font(.caption)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -165,66 +104,48 @@ struct TradingStrategiesView: View {
                                 .foregroundColor(.teal)
                         }
                         
-                        // Video Player
+                        // Strategy Image
                         if selectedStrategy?.id == strategy.id {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(strategy.videoTitle)
-                                    .font(.subheadline)
-                                    .bold()
-                                
-                                Text("by \(strategy.channelName)")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                
-                                if isLoading {
-                                    ProgressView()
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .padding()
-                                } else if let error = error {
-                                    Text("Error loading video: \(error)")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                        .padding()
-                                } else {
-                                    YouTubePlayer(
-                                        videoID: strategy.videoID,
-                                        isLoading: $isLoading,
-                                        error: $error
-                                    )
-                                    .frame(height: 200)
-                                    .cornerRadius(12)
-                                }
-                            }
-                            .padding(.top, 8)
+                            Image(systemName: getImageName(for: strategy))
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 200)
+                                .foregroundColor(.teal)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.teal.opacity(0.1))
+                                )
+                                .cornerRadius(12)
+                                .shadow(radius: 5)
+                                .padding(.top, 8)
                         }
                         
-                        // Watch Video Button
+                        // Show/Hide Image Button
                         Button(action: {
-                            withAnimation {
+                            withAnimation(.easeInOut(duration: 0.3)) {
                                 if selectedStrategy?.id == strategy.id {
                                     selectedStrategy = nil
-                                    error = nil
                                 } else {
                                     selectedStrategy = strategy
-                                    error = nil
                                 }
                             }
                         }) {
                             HStack {
-                                Image(systemName: selectedStrategy?.id == strategy.id ? "chevron.up" : "play.fill")
-                                Text(selectedStrategy?.id == strategy.id ? "Hide Video" : "Watch Video")
+                                Image(systemName: selectedStrategy?.id == strategy.id ? "chevron.up" : "photo")
+                                Text(selectedStrategy?.id == strategy.id ? "Hide Image" : "Show Image")
                             }
                             .font(.subheadline)
                             .foregroundColor(.white)
-                            .padding(.top, 4)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(
-                                LinearGradient(gradient: Gradient(colors: [.yellow, .pink]), startPoint: .leading, endPoint: .trailing)
+                                LinearGradient(gradient: Gradient(colors: [.blue, .purple]), startPoint: .leading, endPoint: .trailing)
                             )
                             .cornerRadius(10)
-                            .shadow(color: .yellow.opacity(0.5), radius: 6, x: 0, y: 2)
+                            .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
                         }
+                        .padding(.top, 8)
                     }
                     .padding(.vertical, 8)
                 }
@@ -246,9 +167,27 @@ struct TradingStrategiesView: View {
             return .gray
         }
     }
+    
+    private func getImageName(for strategy: TradingStrategy) -> String {
+        switch strategy.name {
+        case "Trend Following":
+            return "chart.line.uptrend.xyaxis"
+        case "Breakout Trading":
+            return "arrow.up.forward"
+        case "Range Trading":
+            return "arrow.left.and.right"
+        case "Scalping":
+            return "chart.xyaxis.line"
+        case "Position Trading":
+            return "chart.bar.fill"
+        default:
+            return "chart.line.uptrend.xyaxis"
+        }
+    }
 }
 
 #Preview {
     TradingStrategiesView()
         .preferredColorScheme(.dark)
-} 
+}
+
