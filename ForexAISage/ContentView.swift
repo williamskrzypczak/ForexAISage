@@ -7,6 +7,47 @@
 
 import SwiftUI
 
+// MARK: - Reusable Components
+struct GradientHeader: View {
+    let colorScheme: ColorScheme
+    
+    var body: some View {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                colorScheme == .dark ? Color.teal.opacity(0.3) : Color.teal.opacity(0.2),
+                colorScheme == .dark ? Color.blue.opacity(0.3) : Color.blue.opacity(0.2)
+            ]),
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+}
+
+struct DarkModeToggle: View {
+    @Binding var isDarkMode: Bool
+    let colorScheme: ColorScheme
+    
+    var body: some View {
+        Button(action: {
+            isDarkMode.toggle()
+            // Add haptic feedback
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+        }) {
+            Image(systemName: isDarkMode ? "sun.max.fill" : "moon.fill")
+                .font(.system(size: 24))
+                .foregroundColor(isDarkMode ? .yellow : .blue)
+                .padding(8)
+                .background(
+                    Circle()
+                        .fill(colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1))
+                )
+        }
+        .accessibilityLabel(isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")
+        .accessibilityHint("Double tap to toggle between light and dark mode")
+    }
+}
+
 // MARK: - Main Content View
 // This is the root view of the application that contains the main navigation and tab structure
 struct ContentView: View {
@@ -20,35 +61,15 @@ struct ContentView: View {
             HStack {
                 Text("ForexAISage")
                     .font(.system(size: 34, weight: .bold))
+                    .accessibilityAddTraits(.isHeader)
                 
                 Spacer()
                 
-                // Dark mode toggle button
-                Button(action: {
-                    isDarkMode.toggle()
-                }) {
-                    Image(systemName: isDarkMode ? "sun.max.fill" : "moon.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(isDarkMode ? .yellow : .blue)
-                        .padding(8)
-                        .background(
-                            Circle()
-                                .fill(colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1))
-                        )
-                }
+                DarkModeToggle(isDarkMode: $isDarkMode, colorScheme: colorScheme)
             }
             .padding()
             .frame(maxWidth: .infinity)
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        colorScheme == .dark ? Color.teal.opacity(0.3) : Color.teal.opacity(0.2),
-                        colorScheme == .dark ? Color.blue.opacity(0.3) : Color.blue.opacity(0.2)
-                    ]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
+            .background(GradientHeader(colorScheme: colorScheme))
             
             // Tab navigation containing the three main sections of the app
             TabView {
@@ -59,10 +80,10 @@ struct ContentView: View {
                     }
                     .font(.title3)
                 
-                // Watchlist section for managing forex pairs
-                WatchlistView()
+                // Trading Strategies section
+                TradingStrategiesView()
                     .tabItem {
-                        Label("Watchlist", systemImage: "list.bullet")
+                        Label("Strategies", systemImage: "list.bullet.clipboard")
                     }
                     .font(.title3)
                 
@@ -96,27 +117,34 @@ struct ChartTabView: View {
     ]
     @State private var selectedPair = ForexPair(symbol: "EUR/USD", name: "Euro / US Dollar", description: "The most traded currency pair in the world")
     @State private var searchText = ""
+    @State private var isRefreshing = false
     
     // Computed property that filters pairs based on search input
     var filteredPairs: [ForexPair] {
         if searchText.isEmpty {
             return pairs
         }
+        let searchTerms = searchText.lowercased().split(separator: " ")
         return pairs.filter { pair in
-            pair.symbol.localizedCaseInsensitiveContains(searchText) ||
-            pair.name.localizedCaseInsensitiveContains(searchText)
+            let pairText = "\(pair.symbol) \(pair.name)".lowercased()
+            return searchTerms.allSatisfy { term in
+                pairText.contains(term)
+            }
         }
     }
     
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
+                LazyVStack(spacing: 20) {
                     // Dropdown menu for selecting forex pairs
                     Menu {
                         ForEach(filteredPairs) { pair in
                             Button(action: {
                                 selectedPair = pair
+                                // Add haptic feedback
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.impactOccurred()
                             }) {
                                 Text(pair.name)
                             }
@@ -137,11 +165,18 @@ struct ChartTabView: View {
                     }
                     .padding()
                     .zIndex(1) // Ensure menu stays on top
+                    .accessibilityLabel("Select Currency Pair")
+                    .accessibilityHint("Double tap to open the currency pair selection menu")
                     
                     // Chart view component for displaying the selected pair's data
                     ChartView(pair: selectedPair.symbol)
                         .id(selectedPair.symbol) // Force view refresh when pair changes
                 }
+            }
+            .refreshable {
+                isRefreshing = true
+                // Add refresh logic here
+                isRefreshing = false
             }
             .navigationTitle("Daily Chart")
             .navigationBarTitleDisplayMode(.inline)

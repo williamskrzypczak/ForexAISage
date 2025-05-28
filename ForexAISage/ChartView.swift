@@ -64,8 +64,9 @@ struct ChartView: View {
     // State variables for chart configuration
     @State private var selectedChartType = 0
     @State private var priceData: [PricePoint] = []
-    @State private var isLoading = false
-    @State private var error: String?
+    @State private var isLoading = true
+    @State private var error: Error?
+    @State private var isUsingDummyData = false
     
     // Create an instance of the forex data service
     @StateObject private var forexService = ForexDataService()
@@ -74,28 +75,38 @@ struct ChartView: View {
     
     // MARK: - Load Data
     private func loadData() {
+        print("ChartView - Starting to load data for \(pair)")
         isLoading = true
         error = nil
         
         Task {
             do {
+                print("ChartView - Fetching historical data")
                 let data = try await forexService.fetchHistoricalData(for: pair)
                 await MainActor.run {
                     priceData = data
                     isLoading = false
+                    isUsingDummyData = forexService.isUsingDummyData
+                    print("ChartView - Historical data loaded: \(data.count) points")
                 }
             } catch let error as NSError {
                 await MainActor.run {
-                    self.error = error.localizedDescription
+                    self.error = error
                     isLoading = false
+                    print("ChartView - Error loading historical data: \(error.localizedDescription)")
                 }
             } catch {
                 await MainActor.run {
-                    self.error = "Failed to load data: \(error.localizedDescription)"
+                    self.error = error
                     isLoading = false
+                    print("ChartView - Unknown error loading historical data")
                 }
             }
         }
+        
+        // Fetch current price
+        print("ChartView - Fetching current price")
+        forexService.fetchCurrentPrice(for: pair)
     }
     
     // MARK: - Chart Calculations
@@ -159,31 +170,71 @@ struct ChartView: View {
                     
                     Spacer()
                     
-                    if let currentPrice = forexService.currentPrice {
-                        Text(String(format: "%.4f", currentPrice))
-                            .font(.headline)
-                            .bold()
+                    Group {
+                        if let currentPrice = forexService.currentPrice {
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Current Value")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                Text(String(format: "%.4f", currentPrice))
+                                    .font(.title3)
+                                    .bold()
+                                    .foregroundColor(.primary)
+                            }
+                            .onAppear {
+                                print("ChartView - Current price view appeared: \(currentPrice)")
+                            }
+                        } else {
+                            Text("Loading price...")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .onAppear {
+                                    print("ChartView - Current price is nil")
+                                }
+                        }
                     }
                     
-                    if let change = forexService.priceChangePercent {
-                        Text(String(format: "%.2f%%", change))
-                            .font(.subheadline)
-                            .foregroundColor(change >= 0 ? .green : .red)
-                            .padding(.leading, 4)
+                    Group {
+                        if let change = forexService.priceChangePercent {
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Change")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                Text(String(format: "%.2f%%", change))
+                                    .font(.title3)
+                                    .bold()
+                                    .foregroundColor(change >= 0 ? .green : .red)
+                            }
+                            .onAppear {
+                                print("ChartView - Change view appeared: \(change)")
+                            }
+                        } else {
+                            Text("Loading change...")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .onAppear {
+                                    print("ChartView - Change is nil")
+                                }
+                        }
                     }
                 }
                 .padding(.horizontal)
                 .padding(.top, 4)
+                .onChange(of: forexService.currentPrice) { newPrice in
+                    print("ChartView - Current price changed to: \(String(describing: newPrice))")
+                }
+                .onChange(of: forexService.priceChangePercent) { newChange in
+                    print("ChartView - Price change changed to: \(String(describing: newChange))")
+                }
                 
                 if isLoading {
-                    ProgressView()
-                        .frame(height: 250)
+                    ProgressView("Loading chart data...")
                 } else if let error = error {
                     VStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: 30))
                             .foregroundColor(.red)
-                        Text(error)
+                        Text("Error: \(error.localizedDescription)")
                             .font(.subheadline)
                             .foregroundColor(.red)
                             .multilineTextAlignment(.center)
@@ -200,6 +251,23 @@ struct ChartView: View {
                         .foregroundColor(.gray)
                         .frame(height: 250)
                 } else {
+                    if isUsingDummyData {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("Using generated data (API rate limit reached)")
+                                .font(.subheadline)
+                                .foregroundColor(.orange)
+                        }
+                        .padding(8)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.bottom, 8)
+                        .onAppear {
+                            print("ChartView - Warning message appeared")
+                        }
+                    }
+                    
                     // Main Chart Display
                     Chart(priceData) { point in
                         if selectedChartType == 0 {
@@ -268,7 +336,6 @@ struct ChartView: View {
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
             loadData()
-            forexService.fetchCurrentPrice(for: pair)
         }
     }
 }

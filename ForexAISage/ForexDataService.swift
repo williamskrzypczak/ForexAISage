@@ -25,8 +25,13 @@ class ForexDataService: ObservableObject {
     @Published var priceChangePercent: Double?
     @Published var lastUpdated: Date?
     @Published var error: String?
+    @Published var isUsingDummyData = false
+    
+    @Published var historicalData: [String: [PricePoint]] = [:]
+    @Published var currentPrices: [String: Double] = [:]
     
     init() {
+        print("ForexDataService - Initializing")
         loadLastValidData()
     }
     
@@ -39,32 +44,37 @@ class ForexDataService: ObservableObject {
     }
     
     private func loadLastValidData() {
+        print("ForexDataService - Loading last valid data")
         // Load last valid data for all pairs
         for pair in ForexPair.commonPairs {
             if let data = UserDefaults.standard.data(forKey: "\(lastValidDataKey)_\(pair.symbol)"),
                let decoded = try? JSONDecoder().decode([PricePoint].self, from: data) {
                 historicalDataCache[pair.symbol] = (data: decoded, timestamp: Date())
+                print("ForexDataService - Loaded cached data for \(pair.symbol)")
             }
             
             let price = UserDefaults.standard.object(forKey: "\(lastValidPriceKey)_\(pair.symbol)") as? Double
             if let price = price, price > 0 {
                 currentPriceCache[pair.symbol] = (price: price, timestamp: Date())
+                print("ForexDataService - Loaded cached price for \(pair.symbol): \(price)")
             }
         }
     }
     
     private func saveLastValidPrice(pair: String, price: Double) {
         UserDefaults.standard.set(price, forKey: "\(lastValidPriceKey)_\(pair)")
+        print("ForexDataService - Saved price for \(pair): \(price)")
     }
     
     // MARK: - Dummy Data Generation
     private func generateDummyData(for pair: String) -> [PricePoint] {
+        print("ForexDataService - Generating dummy data for \(pair)")
         let calendar = Calendar.current
         let today = Date()
         let basePrice = currentPriceCache[pair]?.price ?? 1.0
         
         // Generate 30 days of dummy data
-        return (0..<30).map { dayOffset in
+        let data = (0..<30).map { dayOffset in
             let date = calendar.date(byAdding: .day, value: -dayOffset, to: today)!
             let randomChange = Double.random(in: -0.02...0.02) // Random change between -2% and +2%
             let price = basePrice * (1 + randomChange)
@@ -78,18 +88,25 @@ class ForexDataService: ObservableObject {
                 volume: Double.random(in: 1000...5000)
             )
         }.sorted { $0.date < $1.date }
+        
+        print("ForexDataService - Generated \(data.count) dummy data points")
+        return data
     }
     
     // MARK: - Fetch Current Price
     // Fetches the current delayed price for a forex pair
     func fetchCurrentPrice(for pair: String) {
+        print("ForexDataService - Starting to fetch current price for \(pair)")
+        
         // Check cache first
         if let cached = currentPriceCache[pair],
            Date().timeIntervalSince(cached.timestamp) < currentPriceCacheDuration {
-            print("Using cached current price for \(pair)")
-            self.currentPrice = cached.price
-            self.lastUpdated = cached.timestamp
-            self.error = nil
+            print("ForexDataService - Using cached current price for \(pair): \(cached.price)")
+            DispatchQueue.main.async {
+                self.currentPrice = cached.price
+                self.lastUpdated = cached.timestamp
+                self.error = nil
+            }
             return
         }
         
@@ -106,44 +123,47 @@ class ForexDataService: ObservableObject {
         ]
         
         guard let url = components.url else {
-            self.error = "Invalid URL"
+            print("ForexDataService - Invalid URL")
+            DispatchQueue.main.async {
+                self.error = "Invalid URL"
+            }
             return
         }
         
-        print("Fetching current price for \(pair) with URL: \(url.absoluteString)")
+        print("ForexDataService - Fetching current price with URL: \(url.absoluteString)")
         
         // Create and start URL session task
         URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Network error: \(error.localizedDescription)")
+                    print("ForexDataService - Network error: \(error.localizedDescription)")
                     self?.error = "Network error: \(error.localizedDescription)"
                     return
                 }
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("Invalid response type")
+                    print("ForexDataService - Invalid response type")
                     self?.error = "Invalid response from server"
                     return
                 }
                 
-                print("Response status code: \(httpResponse.statusCode)")
+                print("ForexDataService - Response status code: \(httpResponse.statusCode)")
                 
                 guard (200...299).contains(httpResponse.statusCode) else {
-                    print("Server error with status code: \(httpResponse.statusCode)")
+                    print("ForexDataService - Server error with status code: \(httpResponse.statusCode)")
                     self?.error = "Server error: \(httpResponse.statusCode)"
                     return
                 }
                 
                 guard let data = data else {
-                    print("No data received")
+                    print("ForexDataService - No data received")
                     self?.error = "No data received"
                     return
                 }
                 
                 // Print raw response for debugging
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    print("Raw API response: \(jsonString)")
+                    print("ForexDataService - Raw API response: \(jsonString)")
                 }
                 
                 do {
@@ -151,23 +171,24 @@ class ForexDataService: ObservableObject {
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                         // Check for API error messages
                         if let errorMessage = json["Error Message"] as? String {
-                            print("API Error: \(errorMessage)")
+                            print("ForexDataService - API Error: \(errorMessage)")
                             self?.error = "API Error: \(errorMessage)"
                             return
                         }
                         
                         if let note = json["Note"] as? String {
-                            print("API Note: \(note)")
+                            print("ForexDataService - API Note: \(note)")
                             if note.contains("API call frequency") || note.contains("rate limit") {
                                 // Use cached data if available
                                 if let cached = self?.currentPriceCache[pair] {
-                                    print("Using expired cached price due to rate limit")
+                                    print("ForexDataService - Using expired cached price due to rate limit")
                                     self?.currentPrice = cached.price
                                     self?.lastUpdated = cached.timestamp
                                     self?.error = "Using cached data (API rate limit reached)"
                                 } else {
                                     // Generate a dummy price if no cache available
                                     let dummyPrice = 1.0 + Double.random(in: -0.1...0.1)
+                                    print("ForexDataService - Generated dummy price: \(dummyPrice)")
                                     self?.currentPrice = dummyPrice
                                     self?.lastUpdated = Date()
                                     self?.error = "Using generated data (API rate limit reached)"
@@ -184,24 +205,33 @@ class ForexDataService: ObservableObject {
                            let rate = exchangeRate["5. Exchange Rate"],
                            let price = Double(rate) {
                             
-                            print("Successfully parsed price: \(price)")
+                            print("ForexDataService - Successfully parsed price: \(price)")
                             self?.currentPrice = price
                             self?.lastUpdated = Date()
                             self?.error = nil
+                            
+                            // Calculate price change
+                            if let lastPrice = self?.currentPriceCache[pair]?.price {
+                                let change = price - lastPrice
+                                let changePercent = (change / lastPrice) * 100
+                                print("ForexDataService - Price change: \(change) (\(changePercent)%)")
+                                self?.priceChange = change
+                                self?.priceChangePercent = changePercent
+                            }
                             
                             // Cache the successful response
                             self?.currentPriceCache[pair] = (price: price, timestamp: Date())
                             self?.saveLastValidPrice(pair: pair, price: price)
                         } else {
-                            print("Invalid response format")
+                            print("ForexDataService - Invalid response format")
                             self?.error = "Invalid response format"
                         }
                     } else {
-                        print("Failed to parse JSON")
+                        print("ForexDataService - Failed to parse JSON")
                         self?.error = "Failed to parse response"
                     }
                 } catch {
-                    print("JSON parsing error: \(error.localizedDescription)")
+                    print("ForexDataService - JSON parsing error: \(error.localizedDescription)")
                     self?.error = "Failed to parse response: \(error.localizedDescription)"
                 }
             }
@@ -277,6 +307,8 @@ class ForexDataService: ObservableObject {
                 if note.contains("API call frequency") || note.contains("rate limit") {
                     // Generate dummy data when rate limited
                     print("Rate limit reached, generating dummy data")
+                    isUsingDummyData = true
+                    print("ForexDataService - isUsingDummyData set to true due to rate limit")
                     let dummyData = generateDummyData(for: pair)
                     historicalDataCache[pair] = (data: dummyData, timestamp: Date())
                     saveLastValidData(pair: pair, data: dummyData)
@@ -284,6 +316,10 @@ class ForexDataService: ObservableObject {
                 }
                 throw NSError(domain: "ForexDataService", code: -1, userInfo: [NSLocalizedDescriptionKey: note])
             }
+            
+            // If we get here, we're using real data
+            isUsingDummyData = false
+            print("ForexDataService - isUsingDummyData set to false (using real data)")
             
             guard let timeSeries = json?["Time Series FX (Daily)"] as? [String: [String: String]] else {
                 print("Invalid time series data format")
@@ -333,6 +369,8 @@ class ForexDataService: ObservableObject {
             print("Error fetching historical data: \(error.localizedDescription)")
             // Generate dummy data on any error
             print("Error occurred, generating dummy data")
+            isUsingDummyData = true
+            print("ForexDataService - isUsingDummyData set to true due to error")
             let dummyData = generateDummyData(for: pair)
             historicalDataCache[pair] = (data: dummyData, timestamp: Date())
             saveLastValidData(pair: pair, data: dummyData)
