@@ -87,10 +87,10 @@ struct ContentView: View {
                     }
                     .font(.title3)
                 
-                // AI Sage section for AI-powered insights
-                AISageView()
+                // Agents section for AI-powered trading assistance
+                AgentsView()
                     .tabItem {
-                        Label("AI Sage", systemImage: "brain")
+                        Label("Agents", systemImage: "person.2.fill")
                     }
                     .font(.title3)
                 
