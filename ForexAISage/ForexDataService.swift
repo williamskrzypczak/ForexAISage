@@ -4,7 +4,7 @@ import Foundation
 // Service responsible for fetching delayed forex data from Alpha Vantage API
 class ForexDataService: ObservableObject {
     // API key for Alpha Vantage (you'll need to replace this with your own key)
-    private let apiKey = "EC1GA0IPR84R1HUB"
+    private let apiKey = "730BEVNVNB49LQ0W"
     private let baseURL = "https://www.alphavantage.co/query"
     
     // Cache for historical data
@@ -376,5 +376,44 @@ class ForexDataService: ObservableObject {
             saveLastValidData(pair: pair, data: dummyData)
             return dummyData
         }
+    }
+}
+
+// MARK: - Alpha Vantage Response Models
+struct AlphaVantageResponse: Codable {
+    let timeSeries: [String: TimeSeriesData]
+    
+    enum CodingKeys: String, CodingKey {
+        case timeSeries = "Time Series FX (Daily)"
+    }
+}
+
+struct TimeSeriesData: Codable {
+    let open: String
+    let high: String
+    let low: String
+    let close: String
+    
+    enum CodingKeys: String, CodingKey {
+        case open = "1. open"
+        case high = "2. high"
+        case low = "3. low"
+        case close = "4. close"
+    }
+}
+
+struct ExchangeRateResponse: Codable {
+    let exchangeRate: ExchangeRate
+    
+    enum CodingKeys: String, CodingKey {
+        case exchangeRate = "Realtime Currency Exchange Rate"
+    }
+}
+
+struct ExchangeRate: Codable {
+    let rate: String
+    
+    enum CodingKeys: String, CodingKey {
+        case rate = "5. Exchange Rate"
     }
 } 
